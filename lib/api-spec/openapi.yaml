@@ -3,13 +3,19 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: S10 Window Sticker Generator API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: vin
+    description: VIN decoding
+  - name: s10
+    description: S10 configuration database
+  - name: stickers
+    description: Sticker management
 paths:
   /healthz:
     get:
@@ -24,6 +30,227 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /vin/decode:
+    post:
+      operationId: decodeVin
+      tags: [vin]
+      summary: Decode a VIN
+      description: Validates and decodes a 17-character VIN, returning S10-specific vehicle data
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VinInput"
+      responses:
+        "200":
+          description: VIN decoded successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VinDecodeResult"
+        "400":
+          description: Invalid VIN
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /s10/configs:
+    get:
+      operationId: getS10Configs
+      tags: [s10]
+      summary: Get all S10 configurations
+      description: Returns all available S10 trim/engine/drivetrain configurations
+      responses:
+        "200":
+          description: List of S10 configurations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/S10Config"
+
+  /s10/configs/{year}:
+    get:
+      operationId: getS10ConfigsByYear
+      tags: [s10]
+      summary: Get S10 configurations for a specific year
+      parameters:
+        - name: year
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: S10 configurations for the year
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/S10Config"
+        "404":
+          description: Year not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /stickers:
+    get:
+      operationId: listStickers
+      tags: [stickers]
+      summary: List all saved stickers
+      responses:
+        "200":
+          description: List of saved stickers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Sticker"
+    post:
+      operationId: createSticker
+      tags: [stickers]
+      summary: Save a sticker configuration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StickerInput"
+      responses:
+        "201":
+          description: Sticker created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Sticker"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /stickers/recent:
+    get:
+      operationId: getRecentStickers
+      tags: [stickers]
+      summary: Get recently created stickers
+      responses:
+        "200":
+          description: Recent stickers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Sticker"
+
+  /stickers/{id}:
+    get:
+      operationId: getSticker
+      tags: [stickers]
+      summary: Get a sticker by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Sticker found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Sticker"
+        "404":
+          description: Sticker not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+    patch:
+      operationId: updateSticker
+      tags: [stickers]
+      summary: Update a sticker
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StickerPatch"
+      responses:
+        "200":
+          description: Sticker updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Sticker"
+        "404":
+          description: Sticker not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+    delete:
+      operationId: deleteSticker
+      tags: [stickers]
+      summary: Delete a sticker
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Sticker deleted
+        "404":
+          description: Sticker not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /stickers/{id}/pdf:
+    post:
+      operationId: generateStickerPdf
+      tags: [stickers]
+      summary: Generate a PDF for a sticker
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: PDF generation result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PdfResult"
+        "404":
+          description: Sticker not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +261,287 @@ components:
       required:
         - status
 
+    ApiError:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+
+    VinInput:
+      type: object
+      required: [vin]
+      properties:
+        vin:
+          type: string
+          minLength: 17
+          maxLength: 17
+
+    VinDecodeResult:
+      type: object
+      required: [vin, isValid, isS10]
+      properties:
+        vin:
+          type: string
+        isValid:
+          type: boolean
+        isS10:
+          type: boolean
+        year:
+          type: ["integer", "null"]
+        make:
+          type: ["string", "null"]
+        model:
+          type: ["string", "null"]
+        trim:
+          type: ["string", "null"]
+        engineCode:
+          type: ["string", "null"]
+        engineDescription:
+          type: ["string", "null"]
+        transmissionCode:
+          type: ["string", "null"]
+        drivetrainCode:
+          type: ["string", "null"]
+        cabConfig:
+          type: ["string", "null"]
+        bodyStyle:
+          type: ["string", "null"]
+        assemblyPlant:
+          type: ["string", "null"]
+        modelCode:
+          type: ["string", "null"]
+        suggestedConfig:
+          $ref: "#/components/schemas/S10Config"
+          nullable: true
+
+    S10Config:
+      type: object
+      required: [year, trim, engine, engineDisplacement, engineCylinders, horsepower, torque, fuelType, transmission, drivetrain, cabConfig, msrpBase, standardEquipment, epaCity, epaHighway]
+      properties:
+        year:
+          type: integer
+        trim:
+          type: string
+        engine:
+          type: string
+        engineCode:
+          type: string
+        engineDisplacement:
+          type: string
+        engineCylinders:
+          type: integer
+        horsepower:
+          type: integer
+        torque:
+          type: integer
+        fuelType:
+          type: string
+        transmission:
+          type: string
+        drivetrain:
+          type: string
+        cabConfig:
+          type: string
+        bodyStyle:
+          type: string
+        msrpBase:
+          type: number
+        epaCity:
+          type: integer
+        epaHighway:
+          type: integer
+        standardEquipment:
+          type: array
+          items:
+            type: string
+        availableOptions:
+          type: array
+          items:
+            $ref: "#/components/schemas/S10Option"
+
+    S10Option:
+      type: object
+      required: [code, description, price]
+      properties:
+        code:
+          type: string
+        description:
+          type: string
+        price:
+          type: number
+
+    StickerInput:
+      type: object
+      required: [vin, year, make, model, trim, engine, transmission, drivetrain, cabConfig, msrpBase]
+      properties:
+        vin:
+          type: string
+        year:
+          type: integer
+        make:
+          type: string
+        model:
+          type: string
+        trim:
+          type: string
+        engine:
+          type: string
+        engineDisplacement:
+          type: string
+        engineCylinders:
+          type: ["integer", "null"]
+        horsepower:
+          type: ["integer", "null"]
+        torque:
+          type: ["integer", "null"]
+        transmission:
+          type: string
+        drivetrain:
+          type: string
+        cabConfig:
+          type: string
+        bodyStyle:
+          type: ["string", "null"]
+        assemblyPlant:
+          type: ["string", "null"]
+        exteriorColor:
+          type: ["string", "null"]
+        interiorColor:
+          type: ["string", "null"]
+        msrpBase:
+          type: number
+        epaCity:
+          type: ["integer", "null"]
+        epaHighway:
+          type: ["integer", "null"]
+        standardEquipment:
+          type: array
+          items:
+            type: string
+        selectedOptions:
+          type: array
+          items:
+            $ref: "#/components/schemas/StickerOption"
+        disclaimerAcknowledged:
+          type: boolean
+
+    StickerOption:
+      type: object
+      required: [code, description, price]
+      properties:
+        code:
+          type: string
+        description:
+          type: string
+        price:
+          type: number
+
+    StickerPatch:
+      type: object
+      properties:
+        trim:
+          type: string
+        engine:
+          type: string
+        transmission:
+          type: string
+        drivetrain:
+          type: string
+        exteriorColor:
+          type: ["string", "null"]
+        interiorColor:
+          type: ["string", "null"]
+        msrpBase:
+          type: number
+        epaCity:
+          type: ["integer", "null"]
+        epaHighway:
+          type: ["integer", "null"]
+        standardEquipment:
+          type: array
+          items:
+            type: string
+        selectedOptions:
+          type: array
+          items:
+            $ref: "#/components/schemas/StickerOption"
+        disclaimerAcknowledged:
+          type: boolean
+
+    Sticker:
+      type: object
+      required: [id, vin, year, make, model, trim, engine, transmission, drivetrain, cabConfig, msrpBase, createdAt, updatedAt]
+      properties:
+        id:
+          type: integer
+        vin:
+          type: string
+        year:
+          type: integer
+        make:
+          type: string
+        model:
+          type: string
+        trim:
+          type: string
+        engine:
+          type: string
+        engineDisplacement:
+          type: ["string", "null"]
+        engineCylinders:
+          type: ["integer", "null"]
+        horsepower:
+          type: ["integer", "null"]
+        torque:
+          type: ["integer", "null"]
+        transmission:
+          type: string
+        drivetrain:
+          type: string
+        cabConfig:
+          type: string
+        bodyStyle:
+          type: ["string", "null"]
+        assemblyPlant:
+          type: ["string", "null"]
+        exteriorColor:
+          type: ["string", "null"]
+        interiorColor:
+          type: ["string", "null"]
+        msrpBase:
+          type: number
+        msrpTotal:
+          type: ["number", "null"]
+        epaCity:
+          type: ["integer", "null"]
+        epaHighway:
+          type: ["integer", "null"]
+        standardEquipment:
+          type: array
+          items:
+            type: string
+        selectedOptions:
+          type: array
+          items:
+            $ref: "#/components/schemas/StickerOption"
+        disclaimerAcknowledged:
+          type: boolean
+        shareToken:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    PdfResult:
+      type: object
+      required: [url, filename]
+      properties:
+        url:
+          type: string
+        filename:
+          type: string

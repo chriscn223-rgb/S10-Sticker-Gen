@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "S10 Window Sticker Generator"
+version = "1.0.0"
+id = "artifacts/s10-sticker"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 25426
+
+[services.development]
+run = "pnpm --filter @workspace/s10-sticker run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/s10-sticker", "run", "build" ]
+publicDir = "artifacts/s10-sticker/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "25426"
+BASE_PATH = "/"
